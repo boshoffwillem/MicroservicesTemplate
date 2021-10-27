@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option csharp_namespace = "MicroservicesTemplate.DataService";
+
+package data;
+
+service DataAccess {
+  rpc GetDataBlob (DataRequest) returns (DataReplyBlob);
+  rpc GetDataStream (DataRequest) returns (stream DataReply);
+}
+
+message DataRequest {
+  int32 number_of_data_rows = 1;
+}
+
+message DataReply {
+  string data_row = 1;
+}
+
+message DataReplyBlob {
+  repeated DataReply data_rows = 1;
+}
