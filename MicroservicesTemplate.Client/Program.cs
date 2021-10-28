@@ -1,23 +1,34 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using Grpc.Core;
-using Grpc.Net.Client;
 using MicroservicesTemplate.DataService;
+using Microsoft.AspNetCore.SignalR.Client;
 
 namespace MicroservicesTemplate.Client
 {
     class Program
     {
-        public const int NUMBER_OF_DATA_ROWS = 1_000_000;
+        private static bool _busyWithSignalRBenchmark;
+
+        public const int NUMBER_OF_DATA_ROWS = 10;
+        public const int NUMBER_OF_DATA_ROWS_BENCHMARK = 1_000_000;
+
         static async Task Main(string[] args)
         {
             Console.WriteLine("Hello World!");
 
+            // gRPC
             using GrpcService grpcService = new();
+
+            // SignalR
+            await using SignalRService signalRService = new();
+            await signalRService.ConnectAsync();
+            signalRService.DataBlobReceived += OnDataBlobReceived;
+            signalRService.DataRowReceived += OnDataRowReceived;
 
             UserPrompt();
             string userCommand = Console.ReadLine();
@@ -36,6 +47,20 @@ namespace MicroservicesTemplate.Client
                 {
                     Summary summary = BenchmarkRunner.Run<GrpcService>();
                 }
+                else if (userCommand == "4")
+                {
+                    await signalRService.GetDataBlob();
+                }
+                else if (userCommand == "5")
+                {
+                    await signalRService.GetDataByRow();
+                }
+                else if (userCommand == "6")
+                {
+                    _busyWithSignalRBenchmark = true;
+                    Summary summary = BenchmarkRunner.Run<SignalRService>();
+                    _busyWithSignalRBenchmark = false;
+                }
                 else
                 {
                     Console.WriteLine("Invalid choice!");
@@ -52,79 +77,26 @@ namespace MicroservicesTemplate.Client
             Console.WriteLine("1 -- Grpc GetDataBlob");
             Console.WriteLine("2 -- Grpc GetData");
             Console.WriteLine("3 -- Grpc Benchmark");
+            Console.WriteLine("4 -- SignalR GetDataBlob");
+            Console.WriteLine("5 -- SignalR GetDataByRow");
+            Console.WriteLine("6 -- SignalR Benchmark");
         }
 
-    }
-
-    public class GrpcService : IDisposable
-    {
-        private readonly GrpcChannel _grpcChannel;
-        private readonly DataAccess.DataAccessClient _grpcDataAccessClient;
-
-        public GrpcService()
+        private static void OnDataBlobReceived(List<DataReply> dataBlob)
         {
-            HttpClientHandler httpHandler = new();
-            httpHandler.ServerCertificateCustomValidationCallback =
-                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            if (_busyWithSignalRBenchmark) return;
 
-            _grpcChannel = GrpcChannel.ForAddress("https://localhost:5001",
-                new GrpcChannelOptions { HttpHandler = httpHandler });
-            _grpcDataAccessClient = new DataAccess.DataAccessClient(_grpcChannel);
-        }
-
-        public void Dispose()
-        {
-            _grpcChannel.Dispose();
-        }
-
-        public async Task GrpcGetDataBlob()
-        {
-            var response = await _grpcDataAccessClient.GetDataBlobAsync(new DataRequest
+            foreach (DataReply dataRow in dataBlob)
             {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
-            });
-
-            Console.WriteLine($"Server response with {response.DataRows.Count} rows");
-
-            for (int i = 0; i < response.DataRows.Count; i++)
-            {
-                Console.WriteLine(response.DataRows[i].DataRow);
+                Console.WriteLine(dataRow.DataRow);
             }
         }
 
-        [Benchmark]
-        public async Task GrpcGetDataBlobBenchmark()
+        private static void OnDataRowReceived(DataReply dataRow)
         {
-            var response = await _grpcDataAccessClient.GetDataBlobAsync(new DataRequest
-            {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
-            });
-        }
+            if (_busyWithSignalRBenchmark) return;
 
-        public async Task GrpcGetDataStream()
-        {
-            using AsyncServerStreamingCall<DataReply> dataReplyStream = _grpcDataAccessClient.GetDataStream(new DataRequest
-            {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
-            });
-
-            await foreach (DataReply item in dataReplyStream.ResponseStream.ReadAllAsync())
-            {
-                Console.WriteLine(item.DataRow);
-            }
-        }
-
-        [Benchmark]
-        public async Task GrpcGetDataStreamBenchmark()
-        {
-            using AsyncServerStreamingCall<DataReply> dataReplyStream = _grpcDataAccessClient.GetDataStream(new DataRequest
-            {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
-            });
-
-            await foreach (DataReply item in dataReplyStream.ResponseStream.ReadAllAsync())
-            {
-            }
+            Console.WriteLine(dataRow.DataRow);
         }
     }
 }
