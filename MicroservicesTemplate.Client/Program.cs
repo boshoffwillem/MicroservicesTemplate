@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading.Tasks;
-using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
 using MicroservicesTemplate.DataService;
-using Microsoft.AspNetCore.SignalR.Client;
 
 namespace MicroservicesTemplate.Client
 {
@@ -14,8 +11,8 @@ namespace MicroservicesTemplate.Client
     {
         private static bool _busyWithSignalRBenchmark;
 
-        public const int NUMBER_OF_DATA_ROWS = 10;
-        public const int NUMBER_OF_DATA_ROWS_BENCHMARK = 1_000_000;
+        public const int NumberOfDataRows = 10;
+        public const int NumberOfDataRowsBenchmark = 1_000_000;
 
         static async Task Main(string[] args)
         {
@@ -26,9 +23,9 @@ namespace MicroservicesTemplate.Client
 
             // SignalR
             await using SignalRService signalRService = new();
-            await signalRService.ConnectAsync();
-            signalRService.DataBlobReceived += OnDataBlobReceived;
-            signalRService.DataRowReceived += OnDataRowReceived;
+            //await signalRService.ConnectAsync();
+            SignalRService.DataBlobReceived += OnDataBlobReceived;
+            SignalRService.DataRowReceived += OnDataRowReceived;
 
             UserPrompt();
             string userCommand = Console.ReadLine();

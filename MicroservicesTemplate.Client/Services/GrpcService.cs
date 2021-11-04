@@ -20,7 +20,12 @@ namespace MicroservicesTemplate.Client
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
 
             _grpcChannel = GrpcChannel.ForAddress("https://localhost:5001",
-                new GrpcChannelOptions { HttpHandler = httpHandler });
+                new GrpcChannelOptions
+                {
+                    HttpHandler = httpHandler,
+                    MaxReceiveMessageSize = 1024 * 1024 * 1024,
+                    MaxSendMessageSize = 1024 * 1024 * 1024
+                });
             _grpcDataAccessClient = new DataAccess.DataAccessClient(_grpcChannel);
         }
 
@@ -33,7 +38,7 @@ namespace MicroservicesTemplate.Client
         {
             var response = await _grpcDataAccessClient.GetDataBlobAsync(new DataRequest
             {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
+                NumberOfDataRows = Program.NumberOfDataRows
             });
 
             Console.WriteLine($"Server response with {response.DataRows.Count} rows");
@@ -49,7 +54,7 @@ namespace MicroservicesTemplate.Client
         {
             var response = await _grpcDataAccessClient.GetDataBlobAsync(new DataRequest
             {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS_BENCHMARK
+                NumberOfDataRows = Program.NumberOfDataRowsBenchmark
             });
         }
 
@@ -57,7 +62,7 @@ namespace MicroservicesTemplate.Client
         {
             using AsyncServerStreamingCall<DataReply> dataReplyStream = _grpcDataAccessClient.GetDataStream(new DataRequest
             {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS
+                NumberOfDataRows = Program.NumberOfDataRows
             });
 
             await foreach (DataReply item in dataReplyStream.ResponseStream.ReadAllAsync())
@@ -71,7 +76,7 @@ namespace MicroservicesTemplate.Client
         {
             using AsyncServerStreamingCall<DataReply> dataReplyStream = _grpcDataAccessClient.GetDataStream(new DataRequest
             {
-                NumberOfDataRows = Program.NUMBER_OF_DATA_ROWS_BENCHMARK
+                NumberOfDataRows = Program.NumberOfDataRowsBenchmark
             });
 
             await foreach (DataReply item in dataReplyStream.ResponseStream.ReadAllAsync())
